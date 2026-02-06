@@ -10,3 +10,8 @@ Tech stack:
 - Python
 - NumPy, Pandas
 - Streamlit
+
+
+# Limitations
+
+The model depends on subjective views and static covariance estimates; in practice these would be updated dynamically.
