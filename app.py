@@ -15,76 +15,74 @@ st.set_page_config(
 # -------------------------------------------------
 # LOGO + TITLE + MOVING BANNER (BRANDING ONLY)
 # -------------------------------------------------
-st.markdown("""
-<style>
-.alphastack-header {
-    padding: 10px 0 22px 0;
-}
+st.markdown(
+    """
+    <style>
+    .alphastack-header {
+        padding: 10px 0 22px 0;
+    }
 
-/* Logo row */
-.logo-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
+    .logo-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
 
-/* Logo icon */
-.logo-icon {
-    font-size: 42px;
-}
+    .logo-icon {
+        font-size: 42px;
+    }
 
-/* Logo text */
-.logo-text {
-    font-size: 38px;
-    font-weight: 800;
-    letter-spacing: 0.4px;
-}
+    .logo-text {
+        font-size: 38px;
+        font-weight: 800;
+        letter-spacing: 0.4px;
+    }
 
-/* Subtitle */
-.logo-sub {
-    font-size: 14px;
-    opacity: 0.8;
-    margin-left: 52px;
-}
+    .logo-sub {
+        font-size: 14px;
+        opacity: 0.8;
+        margin-left: 52px;
+    }
 
-/* Moving banner */
-.marquee {
-    overflow: hidden;
-    white-space: nowrap;
-    margin-top: 12px;
-}
+    .marquee {
+        overflow: hidden;
+        white-space: nowrap;
+        margin-top: 12px;
+    }
 
-.marquee span {
-    display: inline-block;
-    padding-left: 100%;
-    animation: marquee 14s linear infinite;
-    font-size: 13px;
-    opacity: 0.75;
-}
+    .marquee span {
+        display: inline-block;
+        padding-left: 100%;
+        animation: marquee 14s linear infinite;
+        font-size: 13px;
+        opacity: 0.75;
+    }
 
-@keyframes marquee {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-100%); }
-}
-</style>
+    @keyframes marquee {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(-100%); }
+    }
+    </style>
 
-<div class="alphastack-header">
-    <div class="logo-row">
-        <div class="logo-icon">📊</div>
-        <div class="logo-text">AlphaStack</div>
+    <div class="alphastack-header">
+        <div class="logo-row">
+            <div class="logo-icon">📊</div>
+            <div class="logo-text">AlphaStack</div>
+        </div>
+
+        <div class="logo-sub">
+            Black–Litterman Portfolio Optimizer
+        </div>
+
+        <div class="marquee">
+            <span>
+                Market Equilibrium × Investor Views × Confidence-Weighted Allocation × Scenario-Based Portfolio Intelligence
+            </span>
+        </div>
     </div>
-
-    <div class="logo-sub">
-        Black–Litterman Portfolio Optimizer
-    </div>
-
-    <div class="marquee">
-        <span>
-            Market Equilibrium × Investor Views × Confidence-Weighted Allocation × Scenario-Based Portfolio Intelligence
-        </span>
-    </div>
-</div>
-""", unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True
+)
 
 st.write(
     "This application compares traditional Mean–Variance optimization with the "
