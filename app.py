@@ -175,7 +175,10 @@ def black_litterman_posterior(cov_matrix, pi, P, Q, omega, tau=0.05):
 
 n = len(tickers)
 market_weights = pd.Series([1/n] * n, index=tickers)
-pi = cov_matrix @ market_weights
+pi = pd.Series(
+    cov_matrix.values @ market_weights.values,
+    index=cov_matrix.index
+)
 
 P = np.zeros((1, n))
 P[0, tickers.index(asset_long)] = 1
