@@ -8,14 +8,7 @@ from scipy.optimize import minimize
 # PAGE CONFIG
 # -------------------------------------------------
 st.set_page_config(
-    page_title="AlphaStack",
-    layout="wide"
-)
-
-# -------------------------------------------------
-# LOGO + TITLE + MOVING BANNER (BRANDING ONLY)
-# -------------------------------------------------
-st.markdown(
+   st.markdown(
     """
     <style>
     .alphastack-header {
@@ -45,6 +38,7 @@ st.markdown(
     }
 
     .marquee {
+        width: 100%;
         overflow: hidden;
         white-space: nowrap;
         margin-top: 12px;
@@ -53,14 +47,14 @@ st.markdown(
     .marquee span {
         display: inline-block;
         padding-left: 100%;
-        animation: marquee 14s linear infinite;
+        animation: marquee 10s linear infinite;
         font-size: 13px;
         opacity: 0.75;
     }
 
     @keyframes marquee {
-        0% { transform: translateX(0); }
-        100% { transform: translateX(-100%); }
+        from { transform: translateX(0%); }
+        to   { transform: translateX(-100%); }
     }
     </style>
 
@@ -83,6 +77,7 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
 
 st.write(
     "This application compares traditional Mean–Variance optimization with the "
