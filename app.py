@@ -5,10 +5,17 @@ import yfinance as yf
 from scipy.optimize import minimize
 
 # -------------------------------------------------
-# PAGE CONFIG
+# PAGE CONFIG (FIXED)
 # -------------------------------------------------
 st.set_page_config(
-   st.markdown(
+    page_title="AlphaStack",
+    layout="wide"
+)
+
+# -------------------------------------------------
+# ALPHASTACK LOGO + MOVING BANNER (WORKING)
+# -------------------------------------------------
+st.markdown(
     """
     <style>
     .alphastack-header {
@@ -78,11 +85,11 @@ st.set_page_config(
     unsafe_allow_html=True
 )
 
-
 st.write(
     "This application compares traditional Mean–Variance optimization with the "
     "Black–Litterman model, which blends market equilibrium with investor views."
 )
+
 
 # -------------------------------------------------
 # SIDEBAR – INVESTOR VIEW
