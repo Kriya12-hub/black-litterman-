@@ -27,14 +27,11 @@ tickers = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ICICIBANK.NS"]
 start_date = "2019-01-01"
 end_date = "2024-12-31"
 
-@st.cache_data
-def load_data():
-    prices = load_price_data(tickers, start_date, end_date)
-    returns = compute_returns(prices)
-    cov_matrix = shrinkage_covariance(returns)
-    return returns, cov_matrix
+returns, cov_matrix = load_data()
 
 historical_returns = returns.mean() * 252
+weights_mv = mean_variance_optimizer(historical_returns, cov_matrix)
+
 weights_mv = mean_variance_optimizer(historical_returns, cov_matrix)
 
 st.sidebar.header("Investor View")
