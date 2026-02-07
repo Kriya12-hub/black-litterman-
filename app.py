@@ -70,7 +70,9 @@ P[0][tickers.index(asset_long)] = 1
 P[0][tickers.index(asset_short)] = -1
 
 Q = [[view_return]]
-omega = [[1 / confidence]]
+confidence_scaled = confidence / 100  # 0.01 → 1.0
+omega = [[(1 - confidence_scaled) * 0.05]]
+
 
 posterior_returns = black_litterman_posterior(
     cov_matrix,
