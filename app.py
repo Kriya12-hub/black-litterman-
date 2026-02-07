@@ -1,125 +1,93 @@
 import streamlit as st
-import pandas as pd
 import numpy as np
+import pandas as pd
+import yfinance as yf
+from scipy.optimize import minimize
 
-# -------------------- PAGE CONFIG --------------------
+# -------------------------------------------------
+# PAGE CONFIG
+# -------------------------------------------------
 st.set_page_config(
     page_title="AlphaStack",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
-# -------------------- GLOBAL CSS --------------------
+# -------------------------------------------------
+# ALPHASTACK HEADER + MOVING BANNER (ONLY UI ADDITION)
+# -------------------------------------------------
 st.markdown("""
 <style>
-:root {
-  --bg: #0E1117;
-  --panel: #111827;
-  --card: #161B22;
-  --primary: #4DA3FF;
-  --accent: #00E5A8;
-  --text: #E6EAF0;
-  --muted: #9CA3AF;
-  --radius: 14px;
+.alphastack-header {
+    padding: 8px 0 18px 0;
 }
 
-/* App background */
-.stApp {
-  background: linear-gradient(120deg, #0E1117, #0B1220);
-  color: var(--text);
+.alphastack-title {
+    font-size: 38px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
 }
 
-/* Sidebar */
-section[data-testid="stSidebar"] {
-  background: linear-gradient(180deg, #4F46E5, #7C3AED);
-  color: white;
-}
-section[data-testid="stSidebar"] * {
-  color: white !important;
+.alphastack-sub {
+    font-size: 14px;
+    opacity: 0.8;
+    margin-top: 4px;
 }
 
-/* Header */
-.header {
-  background: linear-gradient(90deg, #0E1117, #111827);
-  padding: 20px 24px;
-  border-radius: var(--radius);
-  margin-bottom: 22px;
-  box-shadow: 0 10px 30px rgba(0,0,0,.35);
-}
-.logo {
-  font-size: 34px;
-  font-weight: 800;
-  letter-spacing: .3px;
-}
-.logo span { color: var(--primary); }
-
-/* Marquee */
 .marquee {
-  overflow: hidden;
-  white-space: nowrap;
-  margin-top: 8px;
+    overflow: hidden;
+    white-space: nowrap;
+    margin-top: 10px;
 }
+
 .marquee span {
-  display: inline-block;
-  padding-left: 100%;
-  animation: marquee 18s linear infinite;
-  color: var(--muted);
-  font-size: 14px;
+    display: inline-block;
+    padding-left: 100%;
+    animation: marquee 16s linear infinite;
+    font-size: 13px;
+    opacity: 0.75;
 }
+
 @keyframes marquee {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-100%); }
-}
-
-/* Cards */
-.card {
-  background: var(--card);
-  border-radius: var(--radius);
-  padding: 18px;
-  box-shadow: 0 12px 28px rgba(0,0,0,.35);
-}
-.card h4 {
-  margin: 0 0 6px 0;
-  font-weight: 600;
-}
-.card .value {
-  font-size: 26px;
-  font-weight: 800;
-}
-.card.blue { background: linear-gradient(135deg,#2563EB,#1D4ED8); }
-.card.orange { background: linear-gradient(135deg,#F59E0B,#F97316); }
-.card.purple { background: linear-gradient(135deg,#7C3AED,#5B21B6); }
-.card.green { background: linear-gradient(135deg,#10B981,#059669); }
-
-/* Tables */
-[data-testid="stDataFrame"] {
-  background: var(--card);
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-
-/* Charts */
-[data-testid="stPlotlyChart"], [data-testid="stAltairChart"] {
-  background: var(--card);
-  border-radius: var(--radius);
-  padding: 10px;
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-100%); }
 }
 </style>
+
+<div class="alphastack-header">
+    <div class="alphastack-title">AlphaStack</div>
+    <div class="alphastack-sub">
+        Black–Litterman Portfolio Optimizer
+    </div>
+
+    <div class="marquee">
+        <span>
+            Market Equilibrium × Investor Views × Confidence-Weighted Allocation × Scenario Analysis Platform
+        </span>
+    </div>
+</div>
 """, unsafe_allow_html=True)
 
-# -------------------- SIDEBAR --------------------
-st.sidebar.markdown("## AlphaStack")
-st.sidebar.markdown("**Portfolio Intelligence**")
+st.write(
+    "This application compares traditional Mean–Variance optimization with the "
+    "Black–Litterman model, which blends market equilibrium with investor views."
+)
 
-st.sidebar.markdown("### Investor View")
+# -------------------------------------------------
+# SIDEBAR – INVESTOR VIEW
+# -------------------------------------------------
+st.sidebar.header("Investor View")
+
+tickers = ["HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS", "RELIANCE.NS", "TCS.NS"]
+
 asset_long = st.sidebar.selectbox(
     "Asset expected to outperform",
-    ["HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS", "RELIANCE.NS", "TCS.NS"]
+    tickers,
+    index=0
 )
 
 asset_short = st.sidebar.selectbox(
     "Asset expected to underperform",
-    ["HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS", "RELIANCE.NS", "TCS.NS"],
+    tickers,
     index=2
 )
 
@@ -133,92 +101,111 @@ confidence = st.sidebar.slider(
     1, 100, 90
 )
 
-st.sidebar.markdown("---")
-st.sidebar.markdown("**AlphaStack ©**")
+# -------------------------------------------------
+# DATA LOADING (CACHED)
+# -------------------------------------------------
+@st.cache_data
+def load_data(tickers):
+    data = yf.download(tickers, start="2019-01-01", progress=False)
 
-# -------------------- HEADER --------------------
-st.markdown("""
-<div class="header">
-  <div class="logo">Alpha<span>Stack</span></div>
-  <div class="marquee">
-    <span>
-      Black–Litterman Portfolio Optimizer • Market Equilibrium + Investor Views • Confidence-Weighted Allocation • Institutional-Grade Portfolio Logic
-    </span>
-  </div>
-</div>
-""", unsafe_allow_html=True)
+    if isinstance(data.columns, pd.MultiIndex):
+        prices = data["Adj Close"] if "Adj Close" in data.columns.levels[0] else data["Close"]
+    else:
+        prices = data["Adj Close"] if "Adj Close" in data.columns else data["Close"]
 
-# -------------------- METRIC CARDS --------------------
-c1, c2, c3, c4 = st.columns(4)
+    returns = prices.pct_change().dropna()
+    return returns
 
-with c1:
-    st.markdown("""
-    <div class="card purple">
-      <h4>Total Assets</h4>
-      <div class="value">₹42,00,000</div>
-    </div>
-    """, unsafe_allow_html=True)
+returns = load_data(tickers)
+cov_matrix = returns.cov() * 252
 
-with c2:
-    st.markdown("""
-    <div class="card blue">
-      <h4>Expected Return</h4>
-      <div class="value">12.8%</div>
-    </div>
-    """, unsafe_allow_html=True)
+# -------------------------------------------------
+# MEAN–VARIANCE (MAX SHARPE)
+# -------------------------------------------------
+def mean_variance_optimizer(expected_returns, cov_matrix):
+    n = len(expected_returns)
 
-with c3:
-    st.markdown("""
-    <div class="card orange">
-      <h4>Portfolio Risk</h4>
-      <div class="value">18.4%</div>
-    </div>
-    """, unsafe_allow_html=True)
+    def neg_sharpe(weights):
+        port_return = weights @ expected_returns
+        port_vol = np.sqrt(weights.T @ cov_matrix @ weights)
+        return -port_return / port_vol
 
-with c4:
-    st.markdown("""
-    <div class="card green">
-      <h4>Confidence</h4>
-      <div class="value">{confidence}%</div>
-    </div>
-    """.format(confidence=confidence), unsafe_allow_html=True)
+    constraints = ({'type': 'eq', 'fun': lambda w: np.sum(w) - 1})
+    bounds = [(0, 1)] * n
+    init = np.ones(n) / n
 
-st.markdown("")
+    result = minimize(
+        neg_sharpe,
+        init,
+        method="SLSQP",
+        bounds=bounds,
+        constraints=constraints
+    )
 
-# -------------------- MAIN CONTENT --------------------
-left, right = st.columns([2.2, 1])
+    return pd.Series(result.x, index=expected_returns.index)
 
-# ----- MOCK DATA (replace with your BL outputs) -----
-tickers = ["HDFCBANK.NS","ICICIBANK.NS","INFY.NS","RELIANCE.NS","TCS.NS"]
-mv = np.array([0.05, 0.35, 0.35, 0.13, 0.12])
-bl = np.array([0.18, 0.17, 0.00, 0.61, 0.04])
+historical_returns = returns.mean() * 252
+weights_mv = mean_variance_optimizer(historical_returns, cov_matrix)
 
-df = pd.DataFrame({
-    "Mean–Variance": mv,
-    "Black–Litterman": bl
-}, index=tickers)
+# -------------------------------------------------
+# BLACK–LITTERMAN
+# -------------------------------------------------
+def black_litterman_posterior(cov_matrix, pi, P, Q, omega, tau=0.05):
+    cov = cov_matrix.values
+    pi = np.asarray(pi).reshape(-1, 1)
+    P = np.asarray(P)
+    Q = np.asarray(Q)
+    omega = np.asarray(omega)
 
-with left:
-    st.subheader("Portfolio Weights Comparison")
-    st.bar_chart(df)
+    middle = np.linalg.inv(P @ (tau * cov) @ P.T + omega)
+    adjustment = tau * cov @ P.T @ middle @ (Q - P @ pi)
+    posterior = pi + adjustment
 
-with right:
-    st.subheader("Allocation Split")
-    donut = pd.DataFrame({
-        "Allocation": ["Black–Litterman","Mean–Variance"],
-        "Weight": [bl.sum(), mv.sum()]
-    })
-    st.write(donut)
+    return pd.Series(posterior.ravel(), index=cov_matrix.index)
 
-st.markdown("")
+n = len(tickers)
+market_weights = pd.Series([1/n] * n, index=tickers)
+pi = cov_matrix @ market_weights
 
-# -------------------- TABLE --------------------
-st.subheader("Detailed Weights")
-st.dataframe(df.style.format("{:.4f}"), use_container_width=True)
+P = np.zeros((1, n))
+P[0, tickers.index(asset_long)] = 1
+P[0, tickers.index(asset_short)] = -1
 
-# -------------------- FOOTER --------------------
-st.markdown("""
-<div style="margin-top:30px; color:#9CA3AF; font-size:13px;">
-AlphaStack is a decision-support tool for scenario analysis. It does not provide investment advice.
-</div>
-""", unsafe_allow_html=True)
+Q = np.array([[view_return]])
+
+confidence_scaled = confidence / 100
+omega = np.array([[(1 - confidence_scaled) * 0.05]])
+
+posterior_returns = black_litterman_posterior(
+    cov_matrix,
+    pi,
+    P,
+    Q,
+    omega
+)
+
+weights_bl = mean_variance_optimizer(posterior_returns, cov_matrix)
+
+# -------------------------------------------------
+# OUTPUTS
+# -------------------------------------------------
+st.subheader("Posterior Returns")
+st.dataframe(posterior_returns.to_frame("Posterior Return"))
+
+st.subheader("Portfolio Weights Comparison")
+
+comparison = pd.DataFrame({
+    "Mean–Variance": weights_mv,
+    "Black–Litterman": weights_bl
+})
+
+st.bar_chart(comparison)
+st.dataframe(comparison.style.format("{:.4f}"), use_container_width=True)
+
+# -------------------------------------------------
+# FOOTER
+# -------------------------------------------------
+st.caption(
+    "AlphaStack is a decision-support tool for portfolio scenario analysis. "
+    "It does not provide investment advice."
+)
