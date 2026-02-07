@@ -4,12 +4,17 @@ import pandas as pd
 def black_litterman_posterior(cov_matrix, pi, P, Q, omega, tau=0.05):
     """
     Compute Black–Litterman posterior expected returns.
+    Works safely with pandas inputs.
     """
     cov = cov_matrix.values
-    pi = pi.values.reshape(-1, 1)
+    pi = np.asarray(pi).reshape(-1, 1)
+    P = np.asarray(P)
+    Q = np.asarray(Q)
+    omega = np.asarray(omega)
 
     middle = np.linalg.inv(P @ (tau * cov) @ P.T + omega)
-    adj = tau * cov @ P.T @ middle @ (Q - P @ pi)
+    adjustment = tau * cov @ P.T @ middle @ (Q - P @ pi)
 
-    posterior_returns = pi + adj
-    return pd.Series(posterior_returns.flatten(), index=cov_matrix.index)
+    posterior = pi + adjustment
+
+    return pd.Series(posterior.ravel(), index=cov_matrix.index)
