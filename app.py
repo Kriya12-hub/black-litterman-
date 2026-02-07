@@ -173,8 +173,15 @@ def black_litterman_posterior(cov_matrix, pi, P, Q, omega, tau=0.05):
 
     return pd.Series(posterior.flatten(), index=cov_matrix.index)
 
-n = len(tickers)
-market_weights = pd.Series([1/n] * n, index=tickers)
+# Align market weights with covariance matrix assets
+assets = cov_matrix.index.tolist()
+n = len(assets)
+
+market_weights = pd.Series(
+    np.ones(n) / n,
+    index=assets
+)
+
 pi = pd.Series(
     cov_matrix.values @ market_weights.values,
     index=cov_matrix.index
