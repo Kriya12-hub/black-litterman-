@@ -5,7 +5,7 @@ import yfinance as yf
 from scipy.optimize import minimize
 
 # -------------------------------------------------
-# PAGE CONFIG (FIXED)
+# PAGE CONFIG (MUST BE FIRST STREAMLIT CALL)
 # -------------------------------------------------
 st.set_page_config(
     page_title="AlphaStack",
@@ -13,13 +13,13 @@ st.set_page_config(
 )
 
 # -------------------------------------------------
-# ALPHASTACK LOGO + MOVING BANNER (WORKING)
+# LOGO + TITLE + MOVING BANNER (WORKING FOR REAL)
 # -------------------------------------------------
 st.markdown(
     """
     <style>
     .alphastack-header {
-        padding: 10px 0 22px 0;
+        padding: 12px 0 20px 0;
     }
 
     .logo-row {
@@ -35,33 +35,34 @@ st.markdown(
     .logo-text {
         font-size: 38px;
         font-weight: 800;
-        letter-spacing: 0.4px;
     }
 
     .logo-sub {
         font-size: 14px;
         opacity: 0.8;
         margin-left: 52px;
+        margin-top: 4px;
     }
 
     .marquee {
-        width: 100%;
+        position: relative;
         overflow: hidden;
         white-space: nowrap;
+        width: 100%;
         margin-top: 12px;
     }
 
     .marquee span {
-        display: inline-block;
-        padding-left: 100%;
+        position: absolute;
+        left: 100%;
         animation: marquee 10s linear infinite;
         font-size: 13px;
         opacity: 0.75;
     }
 
     @keyframes marquee {
-        from { transform: translateX(0%); }
-        to   { transform: translateX(-100%); }
+        0%   { left: 100%; }
+        100% { left: -100%; }
     }
     </style>
 
@@ -89,7 +90,6 @@ st.write(
     "This application compares traditional Mean–Variance optimization with the "
     "Black–Litterman model, which blends market equilibrium with investor views."
 )
-
 
 # -------------------------------------------------
 # SIDEBAR – INVESTOR VIEW
@@ -148,7 +148,14 @@ def mean_variance_optimizer(expected_returns, cov_matrix):
     bounds = [(0, 1)] * n
     init = np.ones(n) / n
 
-    result = minimize(neg_sharpe, init, method="SLSQP", bounds=bounds, constraints=constraints)
+    result = minimize(
+        neg_sharpe,
+        init,
+        method="SLSQP",
+        bounds=bounds,
+        constraints=constraints
+    )
+
     return pd.Series(result.x, index=expected_returns.index)
 
 historical_returns = returns.mean() * 252
@@ -160,8 +167,10 @@ weights_mv = mean_variance_optimizer(historical_returns, cov_matrix)
 def black_litterman_posterior(cov_matrix, pi, P, Q, omega, tau=0.05):
     cov = cov_matrix.values
     pi = np.asarray(pi).reshape(-1, 1)
+
     middle = np.linalg.inv(P @ (tau * cov) @ P.T + omega)
     posterior = pi + tau * cov @ P.T @ middle @ (Q - P @ pi)
+
     return pd.Series(posterior.flatten(), index=cov_matrix.index)
 
 n = len(tickers)
@@ -173,9 +182,12 @@ P[0, tickers.index(asset_long)] = 1
 P[0, tickers.index(asset_short)] = -1
 
 Q = np.array([[view_return]])
-omega = np.array([[(1 - confidence/100) * 0.05]])
+omega = np.array([[(1 - confidence / 100) * 0.05]])
 
-posterior_returns = black_litterman_posterior(cov_matrix, pi, P, Q, omega)
+posterior_returns = black_litterman_posterior(
+    cov_matrix, pi, P, Q, omega
+)
+
 weights_bl = mean_variance_optimizer(posterior_returns, cov_matrix)
 
 # -------------------------------------------------
@@ -195,6 +207,6 @@ st.bar_chart(comparison)
 st.dataframe(comparison.style.format("{:.4f}"), use_container_width=True)
 
 st.caption(
-    "AlphaStack is a decision-support system for portfolio scenario analysis. "
-    "Not investment advice."
+    "AlphaStack is a decision-support tool for portfolio scenario analysis. "
+    "It does not provide investment advice."
 )
