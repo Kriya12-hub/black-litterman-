@@ -49,9 +49,11 @@ asset_short = st.sidebar.selectbox("Asset expected to underperform", tickers, in
 view_return = st.sidebar.slider(
     "Expected Outperformance (%)",
     min_value=0.0,
-    max_value=10.0,
-    value=3.0
+    max_value=25.0,
+    value=10.0,
+    step=1.0
 ) / 100
+
 
 confidence = st.sidebar.slider(
     "Confidence Level",
