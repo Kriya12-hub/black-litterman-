@@ -77,12 +77,14 @@ omega = [[(1 - confidence_scaled) * 0.05]]
 posterior_returns = black_litterman_posterior(
     cov_matrix,
     pi,
-    pd.DataFrame(P),
-    pd.DataFrame(Q),
-    pd.DataFrame(omega)
+    P,
+    Q,
+    omega
 )
 
 weights_bl = mean_variance_optimizer(posterior_returns, cov_matrix)
+st.write("Posterior returns:", posterior_returns)
+
 
 st.subheader("Portfolio Weights Comparison")
 
