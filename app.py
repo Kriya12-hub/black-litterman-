@@ -2,221 +2,184 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import yfinance as yf
-from scipy.optimize import minimize
+import matplotlib.pyplot as plt
 
-# -------------------------------------------------
-# PAGE CONFIG (MUST BE FIRST STREAMLIT CALL)
-# -------------------------------------------------
+# =========================
+# PAGE CONFIG
+# =========================
 st.set_page_config(
     page_title="AlphaStack",
-    layout="wide"
+    layout="wide",
 )
 
-# -------------------------------------------------
-# LOGO + TITLE + MOVING BANNER (WORKING FOR REAL)
-# -------------------------------------------------
-st.markdown(
-    """
-    <style>
-    .alphastack-header {
-        padding: 12px 0 20px 0;
-    }
+# =========================
+# CUSTOM CSS (LOGO + MARQUEE)
+# =========================
+st.markdown("""
+<style>
+.header-box {
+    padding: 1rem 0 0.5rem 0;
+}
 
-    .logo-row {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
+.logo-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 38px;
+    font-weight: 800;
+}
 
-    .logo-icon {
-        font-size: 42px;
-    }
+.logo-sub {
+    font-size: 16px;
+    color: #555;
+    margin-left: 52px;
+}
 
-    .logo-text {
-        font-size: 38px;
-        font-weight: 800;
-    }
+.marquee {
+    width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    box-sizing: border-box;
+    margin-top: 10px;
+    border-radius: 8px;
+    background: #f7f7f7;
+    padding: 10px 0;
+}
 
-    .logo-sub {
-        font-size: 14px;
-        opacity: 0.8;
-        margin-left: 52px;
-        margin-top: 4px;
-    }
+.marquee span {
+    display: inline-block;
+    padding-left: 100%;
+    animation: marquee 18s linear infinite;
+    font-weight: 600;
+    color: #333;
+}
 
-    .marquee {
-        position: relative;
-        overflow: hidden;
-        white-space: nowrap;
-        width: 100%;
-        margin-top: 12px;
-    }
+@keyframes marquee {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-100%); }
+}
+</style>
+""", unsafe_allow_html=True)
 
-    .marquee span {
-        position: absolute;
-        left: 100%;
-        animation: marquee 10s linear infinite;
-        font-size: 13px;
-        opacity: 0.75;
-    }
-
-    @keyframes marquee {
-        0%   { left: 100%; }
-        100% { left: -100%; }
-    }
-    </style>
-
-    <div class="alphastack-header">
-        <div class="logo-row">
-            <div class="logo-icon">📊</div>
-            <div class="logo-text">AlphaStack</div>
-        </div>
-
-        <div class="logo-sub">
-            Black–Litterman Portfolio Optimizer
-        </div>
-
-        <div class="marquee">
-            <span>
-                Market Equilibrium × Investor Views × Confidence-Weighted Allocation × Scenario-Based Portfolio Intelligence
-            </span>
-        </div>
+# =========================
+# HEADER
+# =========================
+st.markdown("""
+<div class="header-box">
+    <div class="logo-title">📊 AlphaStack</div>
+    <div class="logo-sub">Black–Litterman Portfolio Optimizer</div>
+    <div class="marquee">
+        <span>
+        Market Equilibrium × Investor Views × Confidence-Weighted Allocation × Scenario-Based Portfolio Intelligence
+        </span>
     </div>
-    """,
-    unsafe_allow_html=True
+</div>
+""", unsafe_allow_html=True)
+
+st.markdown(
+    "This application compares traditional Mean–Variance optimization with the Black–Litterman model, "
+    "which blends market equilibrium with investor views."
 )
 
-st.write(
-    "This application compares traditional Mean–Variance optimization with the "
-    "Black–Litterman model, which blends market equilibrium with investor views."
-)
+# =========================
+# DATA LOADING
+# =========================
+@st.cache_data
+def load_data():
+    tickers = ["HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS", "RELIANCE.NS", "TCS.NS"]
+    prices = yf.download(tickers, start="2022-01-01", end="2024-01-01", progress=False)["Adj Close"]
+    returns = prices.pct_change().dropna()
+    cov_matrix = returns.cov() * 252
+    return returns, cov_matrix
 
-# -------------------------------------------------
+returns, cov_matrix = load_data()
+
+# SINGLE SOURCE OF TRUTH
+assets = cov_matrix.index.tolist()
+n = len(assets)
+
+# =========================
 # SIDEBAR – INVESTOR VIEW
-# -------------------------------------------------
-st.sidebar.header("Investor View")
-
-tickers = ["HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS", "RELIANCE.NS", "TCS.NS"]
+# =========================
+st.sidebar.title("Investor View")
 
 asset_long = st.sidebar.selectbox(
     "Asset expected to outperform",
-    tickers,
-    index=0
+    assets
 )
 
 asset_short = st.sidebar.selectbox(
     "Asset expected to underperform",
-    tickers,
+    assets,
     index=2
 )
 
 view_return = st.sidebar.slider(
     "Expected Outperformance (%)",
-    0.0, 25.0, 8.0, step=1.0
+    min_value=0.1,
+    max_value=15.0,
+    value=5.0
 ) / 100
 
 confidence = st.sidebar.slider(
     "Confidence Level",
-    1, 100, 90
-)
+    min_value=1,
+    max_value=100,
+    value=50
+) / 100
 
-# -------------------------------------------------
-# DATA LOADING
-# -------------------------------------------------
-@st.cache_data
-def load_data(tickers):
-    data = yf.download(tickers, start="2019-01-01", progress=False)
-    prices = data["Adj Close"] if "Adj Close" in data else data["Close"]
-    returns = prices.pct_change().dropna()
-    return returns
+# =========================
+# BLACK–LITTERMAN CORE
+# =========================
+tau = 0.05
+market_weights = np.ones(n) / n
 
-returns = load_data(tickers)
-cov_matrix = returns.cov() * 252
-
-# -------------------------------------------------
-# MEAN–VARIANCE OPTIMIZATION
-# -------------------------------------------------
-def mean_variance_optimizer(expected_returns, cov_matrix):
-    n = len(expected_returns)
-
-    def neg_sharpe(weights):
-        ret = weights @ expected_returns
-        vol = np.sqrt(weights.T @ cov_matrix @ weights)
-        return -ret / vol
-
-    constraints = {'type': 'eq', 'fun': lambda w: np.sum(w) - 1}
-    bounds = [(0, 1)] * n
-    init = np.ones(n) / n
-
-    result = minimize(
-        neg_sharpe,
-        init,
-        method="SLSQP",
-        bounds=bounds,
-        constraints=constraints
-    )
-
-    return pd.Series(result.x, index=expected_returns.index)
-
-historical_returns = returns.mean() * 252
-weights_mv = mean_variance_optimizer(historical_returns, cov_matrix)
-
-# -------------------------------------------------
-# BLACK–LITTERMAN MODEL
-# -------------------------------------------------
-def black_litterman_posterior(cov_matrix, pi, P, Q, omega, tau=0.05):
-    cov = cov_matrix.values
-    pi = np.asarray(pi).reshape(-1, 1)
-
-    middle = np.linalg.inv(P @ (tau * cov) @ P.T + omega)
-    posterior = pi + tau * cov @ P.T @ middle @ (Q - P @ pi)
-
-    return pd.Series(posterior.flatten(), index=cov_matrix.index)
-
-# Align market weights with covariance matrix assets
-assets = cov_matrix.index.tolist()
-n = len(assets)
-
-market_weights = pd.Series(
-    np.ones(n) / n,
-    index=assets
-)
-
-pi = pd.Series(
-    cov_matrix.values @ market_weights.values,
-    index=cov_matrix.index
-)
+pi = tau * cov_matrix.values @ market_weights
 
 P = np.zeros((1, n))
-P[0, tickers.index(asset_long)] = 1
-P[0, tickers.index(asset_short)] = -1
+P[0, assets.index(asset_long)] = 1
+P[0, assets.index(asset_short)] = -1
 
-Q = np.array([[view_return]])
-omega = np.array([[(1 - confidence / 100) * 0.05]])
+Q = np.array([view_return])
 
-posterior_returns = black_litterman_posterior(
-    cov_matrix, pi, P, Q, omega
-)
+omega = np.array([[((1 - confidence) + 0.001)]])
 
-weights_bl = mean_variance_optimizer(posterior_returns, cov_matrix)
+middle = np.linalg.inv(P @ (tau * cov_matrix.values) @ P.T + omega)
+mu_bl = pi + (tau * cov_matrix.values) @ P.T @ middle @ (Q - P @ pi)
 
-# -------------------------------------------------
+posterior_returns = pd.Series(mu_bl.flatten(), index=assets)
+
+# =========================
+# OPTIMIZATION
+# =========================
+inv_cov = np.linalg.inv(cov_matrix.values)
+
+weights_mv = inv_cov @ returns.mean().values
+weights_mv = np.maximum(weights_mv, 0)
+weights_mv /= weights_mv.sum()
+
+weights_bl = inv_cov @ posterior_returns.values
+weights_bl = np.maximum(weights_bl, 0)
+weights_bl /= weights_bl.sum()
+
+weights_df = pd.DataFrame({
+    "Mean–Variance": weights_mv,
+    "Black–Litterman": weights_bl
+}, index=assets)
+
+# =========================
 # OUTPUT
-# -------------------------------------------------
+# =========================
 st.subheader("Posterior Returns")
 st.dataframe(posterior_returns.to_frame("Posterior Return"))
 
 st.subheader("Portfolio Weights Comparison")
 
-comparison = pd.DataFrame({
-    "Mean–Variance": weights_mv,
-    "Black–Litterman": weights_bl
-})
+fig, ax = plt.subplots()
+weights_df.plot(kind="bar", ax=ax)
+ax.set_ylabel("Weight")
+ax.set_xlabel("Asset")
+ax.legend()
+st.pyplot(fig)
 
-st.bar_chart(comparison)
-st.dataframe(comparison.style.format("{:.4f}"), use_container_width=True)
-
-st.caption(
-    "AlphaStack is a decision-support tool for portfolio scenario analysis. "
-    "It does not provide investment advice."
-)
+st.dataframe(weights_df)
