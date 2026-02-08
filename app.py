@@ -94,8 +94,6 @@ st.markdown(
 # =========================
 @st.cache_data
 def load_data():
-    tickers = ["HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS", "RELIANCE.NS", "TCS.NS"]
-
     raw = yf.download(
         tickers,
         start="2022-01-01",
@@ -104,17 +102,14 @@ def load_data():
         auto_adjust=True
     )
 
-    # ✅ Handle both single & multi-index safely
-    if isinstance(raw.columns, pd.MultiIndex):
-        prices = raw["Close"]
-    else:
-        prices = raw
-
+    prices = raw["Close"] if isinstance(raw.columns, pd.MultiIndex) else raw
     prices = prices.dropna(how="all")
+
     returns = prices.pct_change().dropna()
     cov_matrix = returns.cov() * 252
 
     return returns, cov_matrix
+
 
 
 # =========================
