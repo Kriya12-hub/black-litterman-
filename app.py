@@ -116,7 +116,8 @@ st.sidebar.title("Investor View")
 
 asset_long = st.sidebar.selectbox(
     "Asset expected to outperform",
-    assets
+  tickers
+
 )
 
 asset_short = st.sidebar.selectbox(
