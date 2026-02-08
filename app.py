@@ -4,6 +4,14 @@ import pandas as pd
 import yfinance as yf
 import matplotlib.pyplot as plt
 
+tickers = [
+    "HDFCBANK.NS",
+    "ICICIBANK.NS",
+    "INFY.NS",
+    "RELIANCE.NS",
+    "TCS.NS"
+]
+
 # =========================
 # PAGE CONFIG
 # =========================
