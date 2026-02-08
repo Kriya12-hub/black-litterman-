@@ -126,7 +126,7 @@ asset_short = st.sidebar.selectbox(
     index=2
 )
 
-)
+
 
 view_return = st.sidebar.slider(
     "Expected Outperformance (%)",
