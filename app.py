@@ -148,11 +148,10 @@ confidence = st.sidebar.slider(
 # =========================
 # BLACK–LITTERMAN CORE
 # =========================
-tau = 0.05
+returns, cov_matrix = load_data()
 n = len(tickers)
 market_weights = np.ones(n) / n
-
-
+tau = 0.05
 pi = tau * cov_matrix.values @ market_weights
 
 P = np.zeros((1, n))
