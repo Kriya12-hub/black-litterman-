@@ -87,16 +87,27 @@ st.markdown(
 @st.cache_data
 def load_data():
     tickers = ["HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS", "RELIANCE.NS", "TCS.NS"]
-    prices = yf.download(tickers, start="2022-01-01", end="2024-01-01", progress=False)["Adj Close"]
+
+    raw = yf.download(
+        tickers,
+        start="2022-01-01",
+        end="2024-01-01",
+        progress=False,
+        auto_adjust=True
+    )
+
+    # ✅ Handle both single & multi-index safely
+    if isinstance(raw.columns, pd.MultiIndex):
+        prices = raw["Close"]
+    else:
+        prices = raw
+
+    prices = prices.dropna(how="all")
     returns = prices.pct_change().dropna()
     cov_matrix = returns.cov() * 252
+
     return returns, cov_matrix
 
-returns, cov_matrix = load_data()
-
-# SINGLE SOURCE OF TRUTH
-assets = cov_matrix.index.tolist()
-n = len(assets)
 
 # =========================
 # SIDEBAR – INVESTOR VIEW
