@@ -166,7 +166,7 @@ omega = np.array([[((1 - confidence) + 0.001)]])
 middle = np.linalg.inv(P @ (tau * cov_matrix.values) @ P.T + omega)
 mu_bl = pi + (tau * cov_matrix.values) @ P.T @ middle @ (Q - P @ pi)
 
-posterior_returns = pd.Series(mu_bl.flatten(), index=assets)
+posterior_returns = pd.Series(mu_bl.flatten(), index=tickers)
 
 # =========================
 # OPTIMIZATION
@@ -184,7 +184,7 @@ weights_bl /= weights_bl.sum()
 weights_df = pd.DataFrame({
     "Mean–Variance": weights_mv,
     "Black–Litterman": weights_bl
-}, index=assets)
+}, index=tickers)
 
 # =========================
 # OUTPUT
