@@ -202,3 +202,12 @@ ax.legend()
 st.pyplot(fig)
 
 st.dataframe(weights_df)
+
+st.markdown(
+    "<hr style='margin-top:40px; margin-bottom:10px;'>"
+    "<div style='text-align:center; font-size:13px; opacity:0.7;'>"
+    "Made by <b>Kriya Chhajed</b>"
+    "</div>",
+    unsafe_allow_html=True
+)
+
