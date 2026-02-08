@@ -155,8 +155,9 @@ tau = 0.05
 pi = tau * cov_matrix.values @ market_weights
 
 P = np.zeros((1, n))
-P[0, assets.index(asset_long)] = 1
-P[0, assets.index(asset_short)] = -1
+P[0, tickers.index(asset_long)] = 1
+P[0, tickers.index(asset_short)] = -1
+
 
 Q = np.array([view_return])
 
