@@ -87,8 +87,9 @@ asset_long = st.sidebar.selectbox(
 asset_short = st.sidebar.selectbox(
     "Asset expected to underperform",
     assets,
-    index=2
+    index=1
 )
+
 
 expected_outperformance = (
     st.sidebar.slider(
