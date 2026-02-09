@@ -42,7 +42,9 @@ st.write(
 # --------------------------------------------------
 @st.cache_data
 def load_data():
+    assets = tickers
     tickers = ["HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS", "RELIANCE.NS", "TCS.NS"]
+    
 
     data = yf.download(
         tickers,
