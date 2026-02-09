@@ -44,22 +44,27 @@ st.write(
 def load_data():
     tickers = ["HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS", "RELIANCE.NS", "TCS.NS"]
 
-    prices = yf.download(
+    data = yf.download(
         tickers,
         start="2022-01-01",
         end="2024-01-01",
-        progress=False
-    )["Adj Close"]
+        progress=False,
+        group_by="ticker"
+    )
+
+    # Safely extract Adjusted Close
+    prices = pd.DataFrame({
+        ticker: data[ticker]["Adj Close"]
+        for ticker in tickers
+        if "Adj Close" in data[ticker]
+    })
 
     prices = prices.dropna(how="all")
+
     returns = prices.pct_change().dropna()
     cov_matrix = returns.cov() * 252  # annualized
 
     return tickers, returns, cov_matrix
-
-tickers, returns, cov_matrix = load_data()
-assets = tickers
-n = len(assets)
 
 # --------------------------------------------------
 # SIDEBAR – INVESTOR VIEW
