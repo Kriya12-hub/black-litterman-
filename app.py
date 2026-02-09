@@ -4,18 +4,18 @@ import pandas as pd
 import yfinance as yf
 import matplotlib.pyplot as plt
 
-# ==================================================
+# ===============================
 # PAGE CONFIG
-# ==================================================
+# ===============================
 st.set_page_config(
     page_title="AlphaStack",
     page_icon="📊",
     layout="wide"
 )
 
-# ==================================================
+# ===============================
 # HEADER
-# ==================================================
+# ===============================
 st.markdown(
     """
     <h1 style="margin-bottom:0;">📊 AlphaStack</h1>
@@ -23,20 +23,20 @@ st.markdown(
         Black–Litterman Portfolio Optimizer
     </p>
     <marquee behavior="scroll" direction="left">
-        Market Equilibrium × Investor Views × Confidence-Weighted Portfolio Construction
+        Market Equilibrium × Investor Views × Confidence-Weighted Allocation
     </marquee>
     """,
     unsafe_allow_html=True
 )
 
 st.write(
-    "This application demonstrates how the Black–Litterman model blends "
-    "market equilibrium with investor views to construct stable portfolios."
+    "This application demonstrates how investor views are incorporated "
+    "into portfolio construction using the Black–Litterman framework."
 )
 
-# ==================================================
-# DATA LOADING (ROBUST + SAFE)
-# ==================================================
+# ===============================
+# DATA LOADING (ROBUST)
+# ===============================
 @st.cache_data
 def load_data():
     tickers = [
@@ -47,19 +47,18 @@ def load_data():
         "TCS.NS"
     ]
 
-    raw = yf.download(
+    data = yf.download(
         tickers,
         start="2022-01-01",
         end="2024-01-01",
-        progress=False,
-        auto_adjust=True
+        auto_adjust=True,
+        progress=False
     )
 
-    # Handle both single-index and multi-index formats safely
-    if isinstance(raw.columns, pd.MultiIndex):
-        prices = raw["Close"]
+    if isinstance(data.columns, pd.MultiIndex):
+        prices = data["Close"]
     else:
-        prices = raw
+        prices = data
 
     prices = prices.dropna(axis=1, how="any")
 
@@ -71,19 +70,16 @@ def load_data():
 
 returns, cov_matrix = load_data()
 
-# ==================================================
-# ASSET UNIVERSE (SINGLE SOURCE OF TRUTH)
-# ==================================================
 assets = cov_matrix.columns.tolist()
 n = len(assets)
 
 if n < 2:
-    st.error("Not enough valid assets to construct portfolio.")
+    st.error("Not enough valid assets to build portfolio.")
     st.stop()
 
-# ==================================================
-# SIDEBAR – INVESTOR VIEW
-# ==================================================
+# ===============================
+# SIDEBAR INPUTS
+# ===============================
 st.sidebar.title("Investor View")
 
 asset_long = st.sidebar.selectbox(
@@ -98,77 +94,71 @@ asset_short = st.sidebar.selectbox(
     index=0
 )
 
-expected_outperformance = (
-    st.sidebar.slider(
-        "Expected Outperformance (%)",
-        min_value=1.0,
-        max_value=15.0,
-        value=8.0,
-        step=0.5
-    ) / 100
-)
+expected_outperformance = st.sidebar.slider(
+    "Expected Outperformance (%)",
+    min_value=1.0,
+    max_value=15.0,
+    value=8.0,
+    step=0.5
+) / 100
 
-confidence = (
-    st.sidebar.slider(
-        "Confidence Level",
-        min_value=10,
-        max_value=90,
-        value=75,
-        step=5
-    ) / 100
-)
+confidence = st.sidebar.slider(
+    "Confidence Level",
+    min_value=10,
+    max_value=90,
+    value=75,
+    step=5
+) / 100
 
-# ==================================================
-# BLACK–LITTERMAN MODEL
-# ==================================================
+# ===============================
+# BLACK–LITTERMAN CORE
+# ===============================
 tau = 0.05
 delta = 2.5
 
 market_weights = np.ones(n) / n
-
-# Implied equilibrium returns
 pi = delta * cov_matrix.values @ market_weights
 
-# View matrix
+# Relative view matrix
 P = np.zeros((1, n))
 P[0, assets.index(asset_long)] = 1
 P[0, assets.index(asset_short)] = -1
 
 Q = np.array([[expected_outperformance]])
 
-Omega = np.array([[ (1 - confidence) * (P @ cov_matrix.values @ P.T)[0,0] + 1e-6 ]])
+Omega = np.array([
+    [(1 - confidence) * (P @ cov_matrix.values @ P.T)[0, 0] + 1e-6]
+])
 
-
-# Posterior returns
 inv_tau_cov = np.linalg.inv(tau * cov_matrix.values)
 middle = np.linalg.inv(inv_tau_cov + P.T @ np.linalg.inv(Omega) @ P)
 
 mu_bl = middle @ (inv_tau_cov @ pi + P.T @ np.linalg.inv(Omega) @ Q)
+mu_bl = mu_bl.flatten()
 
-mu_bl = np.asarray(mu_bl).reshape(-1)
+# ===============================
+# 🔥 VIEW-AMPLIFIED RETURNS (KEY FIX)
+# ===============================
+view_adjustment = np.zeros(n)
+view_adjustment[assets.index(asset_long)] += expected_outperformance * confidence
+view_adjustment[assets.index(asset_short)] -= expected_outperformance * confidence
 
-if len(mu_bl) != n:
-    mu_bl = np.repeat(mu_bl[0], n)
+adjusted_returns = mu_bl + view_adjustment
 
-posterior_returns = pd.Series(mu_bl, index=assets)
+posterior_returns = pd.Series(adjusted_returns, index=assets)
 
-
-# ==================================================
-# PORTFOLIO WEIGHTS
-# ==================================================
-# Mean–Variance proxy
-mv_raw = np.maximum(returns.mean().loc[assets].values, 0)
-mv_weights = mv_raw / mv_raw.sum()
-
-# Black–Litterman weights
-# Convert posterior returns to weights using softmax
+# ===============================
+# WEIGHT CONVERSION (SOFTMAX)
+# ===============================
 def softmax(x):
-    x = x - np.max(x)  # numerical stability
+    x = x - np.max(x)
     exp_x = np.exp(x)
     return exp_x / exp_x.sum()
 
-bl_weights = softmax(posterior_returns.values)
+bl_weights = softmax(adjusted_returns)
 
+mv_raw = np.maximum(returns.mean().loc[assets].values, 0)
+mv_weights = mv_raw / mv_raw.sum()
 
 weights_df = pd.DataFrame(
     {
@@ -178,21 +168,21 @@ weights_df = pd.DataFrame(
     index=assets
 )
 
-# ==================================================
+# ===============================
 # OUTPUT TABLES
-# ==================================================
-st.subheader("Posterior Expected Returns")
+# ===============================
+st.subheader("Adjusted Posterior Returns")
 st.dataframe(
-    posterior_returns.to_frame("Posterior Return"),
+    posterior_returns.to_frame("Expected Return"),
     use_container_width=True
 )
 
 st.subheader("Portfolio Weights")
 st.dataframe(weights_df, use_container_width=True)
 
-# ==================================================
-# VISUALIZATION
-# ==================================================
+# ===============================
+# CHART (THIS WILL MOVE)
+# ===============================
 st.subheader("Portfolio Weights Comparison")
 
 fig, ax = plt.subplots(figsize=(9, 5))
@@ -206,14 +196,14 @@ ax.bar(x + width/2, bl_weights, width, label="Black–Litterman")
 ax.set_xticks(x)
 ax.set_xticklabels(assets, rotation=45)
 ax.set_ylabel("Weight")
-ax.set_ylim(0, max(mv_weights.max(), bl_weights.max()) + 0.1)
+ax.set_ylim(0, max(bl_weights.max(), mv_weights.max()) + 0.1)
 ax.legend()
 
 st.pyplot(fig)
 
-# ==================================================
+# ===============================
 # FOOTER
-# ==================================================
+# ===============================
 st.markdown(
     """
     <hr>
