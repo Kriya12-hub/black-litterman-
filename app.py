@@ -135,6 +135,8 @@ middle = np.linalg.inv(inv_tau_cov + P.T @ np.linalg.inv(Omega) @ P)
 
 mu_bl = middle @ (inv_tau_cov @ pi + P.T @ np.linalg.inv(Omega) @ Q)
 mu_bl = mu_bl.flatten()
+mu_bl = np.asarray(mu_bl).reshape(n)
+
 
 # ===============================
 # 🔥 VIEW-AMPLIFIED RETURNS (KEY FIX)
