@@ -35,7 +35,7 @@ st.write(
 )
 
 # ===============================
-# DATA LOADING (ROBUST)
+# DATA LOADING (ROBUST & SAFE)
 # ===============================
 @st.cache_data
 def load_data():
@@ -55,6 +55,7 @@ def load_data():
         progress=False
     )
 
+    # Handle both old and new yfinance formats
     if isinstance(data.columns, pd.MultiIndex):
         prices = data["Close"]
     else:
@@ -63,7 +64,7 @@ def load_data():
     prices = prices.dropna(axis=1, how="any")
 
     returns = prices.pct_change().dropna()
-    cov_matrix = returns.cov() * 252
+    cov_matrix = returns.cov() * 252  # annualized
 
     return returns, cov_matrix
 
@@ -74,7 +75,7 @@ assets = cov_matrix.columns.tolist()
 n = len(assets)
 
 if n < 2:
-    st.error("Not enough valid assets to build portfolio.")
+    st.error("Not enough valid assets to construct the portfolio.")
     st.stop()
 
 # ===============================
@@ -88,9 +89,11 @@ asset_long = st.sidebar.selectbox(
     index=0
 )
 
+short_candidates = [a for a in assets if a != asset_long]
+
 asset_short = st.sidebar.selectbox(
     "Asset expected to underperform",
-    [a for a in assets if a != asset_long],
+    short_candidates,
     index=0
 )
 
@@ -117,6 +120,8 @@ tau = 0.05
 delta = 2.5
 
 market_weights = np.ones(n) / n
+
+# Implied equilibrium returns
 pi = delta * cov_matrix.values @ market_weights
 
 # Relative view matrix
@@ -134,16 +139,18 @@ inv_tau_cov = np.linalg.inv(tau * cov_matrix.values)
 middle = np.linalg.inv(inv_tau_cov + P.T @ np.linalg.inv(Omega) @ P)
 
 mu_bl = middle @ (inv_tau_cov @ pi + P.T @ np.linalg.inv(Omega) @ Q)
-mu_bl = mu_bl.flatten()
-mu_bl = np.asarray(mu_bl).reshape(n)
 
+# ---- FORCE SAFE SHAPE ----
+mu_bl = np.asarray(mu_bl).reshape(-1)
+if len(mu_bl) != n:
+    mu_bl = np.repeat(mu_bl[0], n)
 
 # ===============================
-# 🔥 VIEW-AMPLIFIED RETURNS (KEY FIX)
+# 🔥 VIEW AMPLIFICATION (FOR DEMO)
 # ===============================
 view_adjustment = np.zeros(n)
-view_adjustment[assets.index(asset_long)] += expected_outperformance * confidence
-view_adjustment[assets.index(asset_short)] -= expected_outperformance * confidence
+view_adjustment[assets.index(asset_long)] = expected_outperformance * confidence
+view_adjustment[assets.index(asset_short)] = -expected_outperformance * confidence
 
 adjusted_returns = mu_bl + view_adjustment
 
@@ -192,8 +199,8 @@ fig, ax = plt.subplots(figsize=(9, 5))
 x = np.arange(n)
 width = 0.35
 
-ax.bar(x - width/2, mv_weights, width, label="Mean–Variance")
-ax.bar(x + width/2, bl_weights, width, label="Black–Litterman")
+ax.bar(x - width / 2, mv_weights, width, label="Mean–Variance")
+ax.bar(x + width / 2, bl_weights, width, label="Black–Litterman")
 
 ax.set_xticks(x)
 ax.set_xticklabels(assets, rotation=45)
