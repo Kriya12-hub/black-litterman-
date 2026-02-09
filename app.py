@@ -161,8 +161,14 @@ mv_raw = np.maximum(returns.mean().loc[assets].values, 0)
 mv_weights = mv_raw / mv_raw.sum()
 
 # Black–Litterman weights
-bl_raw = np.maximum(posterior_returns.values, 0)
-bl_weights = bl_raw / bl_raw.sum()
+# Convert posterior returns to weights using softmax
+def softmax(x):
+    x = x - np.max(x)  # numerical stability
+    exp_x = np.exp(x)
+    return exp_x / exp_x.sum()
+
+bl_weights = softmax(posterior_returns.values)
+
 
 weights_df = pd.DataFrame(
     {
