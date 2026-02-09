@@ -66,8 +66,12 @@ def load_data():
 tickers, returns, cov_matrix = load_data()
 
 # 🔑 single source of truth
-assets = tickers
+# Assets must match covariance matrix columns
+assets = cov_matrix.columns.tolist()
 n = len(assets)
+
+market_weights = np.ones(n) / n
+
 
 # --------------------------------------------------
 # SIDEBAR – INVESTOR VIEW
