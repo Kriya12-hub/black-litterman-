@@ -136,7 +136,8 @@ P[0, assets.index(asset_short)] = -1
 
 Q = np.array([[expected_outperformance]])
 
-Omega = np.array([[1 - confidence + 1e-6]])
+Omega = np.array([[ (1 - confidence) * (P @ cov_matrix.values @ P.T)[0,0] + 1e-6 ]])
+
 
 # Posterior returns
 inv_tau_cov = np.linalg.inv(tau * cov_matrix.values)
